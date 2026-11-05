@@ -13,6 +13,7 @@
 const { v4 } = require("uuid");
 const { ChatOpenAI } = require("@langchain/openai");
 const { ChatAnthropic } = require("@langchain/anthropic");
+const { ChatBedrockConverse } = require("@langchain/aws");
 const { ChatOllama } = require("@langchain/community/chat_models/ollama");
 const { toValidNumber, safeJsonParse } = require("../../../http");
 const { getLLMProviderClass } = require("../../../helpers");
@@ -321,7 +322,18 @@ class Provider {
           ),
           ...config,
         });
-      case "bedrock":
+      // RagmyAI: "bedrock" = legacy IAM/Converse provider; "bedrock_mantle" = upstream Mantle.
+      case "bedrock": {
+        const AWSBedrockLegacyProvider = require("./bedrockLegacy");
+        const { credentials } = new AWSBedrockLegacyProvider();
+        return new ChatBedrockConverse({
+          model: process.env.AWS_BEDROCK_LEGACY_LLM_MODEL_PREFERENCE,
+          region: process.env.AWS_BEDROCK_LEGACY_LLM_REGION,
+          credentials,
+          ...config,
+        });
+      }
+      case "bedrock_mantle":
         return new ChatOpenAI({
           configuration: {
             baseURL: `https://bedrock-mantle.${process.env.AWS_BEDROCK_LLM_REGION}.api.aws/v1`,

@@ -12,6 +12,12 @@ const { multiUserMode, reqBody } = require("../../../utils/http");
 const { validApiKey } = require("../../../utils/middleware/validApiKey");
 const { VALID_CHAT_MODE } = require("../../../utils/chats/stream");
 const { EventLogs } = require("../../../models/eventLogs");
+// RagmyAI: used by the custom parse-file / delete-parsed-files endpoints
+const { handleAPIFileUpload } = require("../../../utils/files/multer");
+const { CollectorApi } = require("../../../utils/collectorApi");
+const {
+  WorkspaceParsedFiles,
+} = require("../../../models/workspaceParsedFiles");
 const {
   convertToChatHistory,
   writeResponseChunk,
@@ -1024,6 +1030,168 @@ function apiWorkspaceEndpoints(app) {
             score: source.score,
           })),
         });
+      } catch (e) {
+        console.error(e.message, e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // ---------------------------------------------------------------------------
+  // RagmyAI custom developer API (ported from ragmyai-v1.8.5.x):
+  //  - DELETE /v1/workspace/:slug/delete-chats       delete chats by id
+  //  - POST   /v1/workspace/:slug/parse-file         parse a file for a chat session ("Ask doc")
+  //  - DELETE /v1/workspace/:slug/delete-parsed-files delete parsed session files by id
+  // ---------------------------------------------------------------------------
+  app.delete(
+    "/v1/workspace/:slug/delete-chats",
+    [validApiKey],
+    async (request, response) => {
+      try {
+        const { slug = "" } = request.params;
+        const { chatIds = [] } = reqBody(request);
+        const workspace = await Workspace.get({ slug });
+
+        if (!workspace || !Array.isArray(chatIds)) {
+          response.sendStatus(400).end();
+          return;
+        }
+
+        // This works for both workspace and threads.
+        // we simplify this by just looking at workspace<>user overlap
+        // since they are all on the same table.
+        await WorkspaceChats.delete({
+          id: { in: chatIds.map((id) => Number(id)) },
+          //user_id: user?.id ?? null,
+          workspaceId: workspace.id,
+        });
+
+        await EventLogs.logEvent("api_workspace_chat_deleted", {
+          workspaceName: workspace?.name || "Unknown Workspace",
+        });
+
+        response.sendStatus(200).end();
+      } catch (e) {
+        console.error(e.message, e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  app.post(
+    "/v1/workspace/:slug/parse-file",
+    [validApiKey, handleAPIFileUpload],
+    async (request, response) => {
+      try {
+
+        const { originalname } = request.file;
+        const { slug = "" } = request.params;
+        const { sessionId } = reqBody(request);
+        const workspace = await Workspace.get({ slug });
+
+        if (!workspace || sessionId == undefined || sessionId == null || sessionId.length == 0) {
+          response.sendStatus(400).end();
+          return;
+        }
+
+        const Collector = new CollectorApi();
+        const processingOnline = await Collector.online();
+
+        if (!processingOnline) {
+          response
+            .status(500)
+            .json({
+              success: false,
+              error: `Document processing API is not online. Document ${originalname} will not be parsed.`,
+            })
+            .end();
+          return;
+        }
+
+        const { success, reason, documents } =
+          await Collector.parseDocument(originalname);
+        if (!success || !documents?.[0]) {
+          return response.status(500).json({
+            success: false,
+            error: reason || "No document returned from collector",
+          });
+        }
+
+        const files = await Promise.all(
+          documents.map(async (doc) => {
+            const metadata = { ...doc };
+            // Strip out pageContent
+            delete metadata.pageContent;
+            const filename = `${originalname}-${doc.id}.json`;
+            const { file, error: dbError } = await WorkspaceParsedFiles.create({
+              filename,
+              workspaceId: workspace.id,
+              userId: null,
+              threadId: null,
+              metadata: JSON.stringify(metadata),
+              tokenCountEstimate: doc.token_count_estimate || 0,
+              sessionId: sessionId,
+            });
+
+            if (dbError) throw new Error(dbError);
+            return file;
+          })
+        );
+
+        Collector.log(`Document ${originalname} parsed successfully.`);
+        await EventLogs.logEvent(
+          "document_uploaded_to_chat",
+          {
+            documentName: originalname,
+            workspace: workspace.slug,
+          }
+        );
+
+        response.status(200).json({
+          success: true,
+          error: null,
+          files,
+        });
+
+      } catch (e) {
+        console.error(e.message, e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  app.delete(
+    "/v1/workspace/:slug/delete-parsed-files",
+    [validApiKey],
+    async (request, response) => {
+      try {
+        const { slug = "" } = request.params;
+        const { fileIds = [] } = reqBody(request);
+        const workspace = await Workspace.get({ slug });
+
+        if (!workspace || !Array.isArray(fileIds)) {
+          response.sendStatus(400).end();
+          return;
+        }
+
+        // This works for both workspace and threads.
+        // we simplify this by just looking at workspace<>user overlap
+        // since they are all on the same table.
+        const success = await WorkspaceParsedFiles.delete({
+          id: { in: fileIds.map((id) => parseInt(id)) },
+          //user_id: user?.id ?? null,
+          workspaceId: workspace.id,
+        });
+
+        if (success) {
+          await EventLogs.logEvent("api_workspace_parsed_files_deleted", {
+            workspaceName: workspace?.name || "Unknown Workspace",
+          });
+
+          response.sendStatus(200).end();
+        } else {
+          response.sendStatus(500).end();
+        }
       } catch (e) {
         console.error(e.message, e);
         response.sendStatus(500).end();

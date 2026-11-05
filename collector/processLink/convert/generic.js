@@ -186,19 +186,39 @@ async function getPageContent({ link, captureAs = "text", headers = {} }) {
       },
     });
 
-    // Override scrape method if headers are available
+    // RagmyAI: always override the scrape method (not only when custom headers
+    // are set) to block image/media/font requests and iframe navigations, and to
+    // always close Chrome in a finally. Without this, some sites froze the server
+    // (ragmyai-v1.8.5.9 / v1.8.5.10). Custom headers are still applied when set.
     let overrideHeaders = validatedHeaders(headers);
-    if (Object.keys(overrideHeaders).length > 0) {
-      loader.scrape = async function () {
-        const { launch } = await PuppeteerWebBaseLoader.imports();
-        const browser = await launch({
-          headless: "new",
-          defaultViewport: null,
-          ignoreDefaultArgs: ["--disable-extensions"],
-          ...this.options?.launchOptions,
-        });
+    loader.scrape = async function () {
+      const { launch } = await PuppeteerWebBaseLoader.imports();
+      const browser = await launch({
+        headless: "new",
+        defaultViewport: null,
+        ignoreDefaultArgs: ["--disable-extensions"],
+        ...this.options?.launchOptions,
+      });
+      try {
         const page = await browser.newPage();
-        await page.setExtraHTTPHeaders(overrideHeaders);
+        if (Object.keys(overrideHeaders).length > 0) {
+          await page.setExtraHTTPHeaders(overrideHeaders);
+        }
+
+        await page.setRequestInterception(true);
+        page.on("request", (req) => {
+          const url = req.url().split("?")[0];
+          if (
+            // Iframes (embedded PDFs, chart/ticker widgets, video players...)
+            // - their content is not part of document.body.innerText anyway
+            (req.isNavigationRequest() && req.frame() !== page.mainFrame()) ||
+            ["image", "media", "font"].includes(req.resourceType()) ||
+            /\.(webp|png|jpe?g|gif|avif|bmp|ico|svg|mp4|webm|mov|m4v|m3u8|mp3|wav|ogg|woff2?|ttf|otf)$/i.test(url)
+          ) {
+            return req.abort().catch(() => {});
+          }
+          return req.continue().catch(() => {});
+        });
 
         await page.goto(this.webPath, {
           timeout: 180000,
@@ -210,10 +230,12 @@ async function getPageContent({ link, captureAs = "text", headers = {} }) {
           ? await this.options.evaluate(page, browser)
           : await page.evaluate(() => document.body.innerHTML);
 
-        await browser.close();
         return bodyHTML;
-      };
-    }
+      } finally {
+        // Always kill Chrome, even if goto/evaluate throws (e.g. navigation timeout)
+        if (browser.isConnected()) await browser.close().catch(() => {});
+      }
+    };
 
     const docs = await loader.load();
     for (const doc of docs) pageContents.push(doc.pageContent);

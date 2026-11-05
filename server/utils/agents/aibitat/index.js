@@ -1525,7 +1525,11 @@ https://docs.anythingllm.com/agent/intelligent-tool-selection
         return new Providers.PerplexityProvider({ model: config.model });
       case "textgenwebui":
         return new Providers.TextWebGenUiProvider({});
+      // RagmyAI: "bedrock" = legacy IAM/Converse provider (Llama 4 Scout),
+      // "bedrock_mantle" = upstream API-key/Mantle provider (Gemma 4).
       case "bedrock":
+        return new Providers.AWSBedrockLegacyProvider({ model: config.model });
+      case "bedrock_mantle":
         return new Providers.AWSBedrockProvider({ model: config.model });
       case "fireworksai":
         return new Providers.FireworksAIProvider({ model: config.model });

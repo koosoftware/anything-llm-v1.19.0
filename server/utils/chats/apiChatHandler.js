@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require("uuid");
 const { DocumentManager } = require("../DocumentManager");
 const { WorkspaceChats } = require("../../models/workspaceChats");
+const { WorkspaceParsedFiles } = require("../../models/workspaceParsedFiles"); // RagmyAI
 const { getVectorDbClass, resolveProviderConnector } = require("../helpers");
 const { addChatCostToMetrics } = require("../helpers/modelPricing");
 const { writeResponseChunk } = require("../helpers/chat/responses");
@@ -603,7 +604,7 @@ async function streamChat({
         // These are needed for the download endpoint to authorize file access
         const allOutputs = [...outputs, ...agentHandler.getPendingOutputs()];
 
-        await WorkspaceChats.new({
+        const { chat } = await WorkspaceChats.new({ // RagmyAI: keep chat for chatId
           workspaceId: workspace.id,
           prompt: String(message),
           response: {
@@ -630,6 +631,7 @@ async function streamChat({
           close: true,
           error: false,
           metrics,
+          chatId: chat?.id, // RagmyAI
         });
       });
   }
@@ -727,6 +729,26 @@ async function streamChat({
         });
       });
     });
+
+  // RagmyAI: inject files parsed for this API chat session ("Ask doc"),
+  // uploaded via POST /v1/workspace/:slug/parse-file with the same sessionId.
+  if (sessionId && sessionId.length > 0) {
+    const parsedFiles = await WorkspaceParsedFiles.getContextFiles(
+      workspace,
+      thread || null,
+      user || null,
+      sessionId
+    );
+    parsedFiles.forEach((doc) => {
+      const { pageContent, ...metadata } = doc;
+      contextTexts.push(doc.pageContent);
+      sources.push({
+        text:
+          pageContent.slice(0, 1_000) + "...continued on in source document...",
+        ...metadata,
+      });
+    });
+  }
 
   parsedDocuments.forEach((doc) => {
     if (doc.pageContent) {

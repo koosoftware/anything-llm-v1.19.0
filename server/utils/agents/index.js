@@ -197,6 +197,7 @@ class AgentHandler {
           );
         break;
       case "bedrock":
+      case "bedrock_mantle":
         // No validations since there are many possible authentication methods
         break;
       case "fireworksai":
@@ -359,7 +360,10 @@ class AgentHandler {
         return process.env.PERPLEXITY_MODEL_PREF ?? "sonar-small-online";
       case "textgenwebui":
         return "text-generation-webui";
+      // RagmyAI: "bedrock" = legacy provider, "bedrock_mantle" = upstream Mantle provider
       case "bedrock":
+        return process.env.AWS_BEDROCK_LEGACY_LLM_MODEL_PREFERENCE ?? null;
+      case "bedrock_mantle":
         return process.env.AWS_BEDROCK_LLM_MODEL_PREFERENCE ?? null;
       case "fireworksai":
         return process.env.FIREWORKS_AI_LLM_MODEL_PREF ?? null;

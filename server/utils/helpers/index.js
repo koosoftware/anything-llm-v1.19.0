@@ -230,7 +230,12 @@ function getLLMProviderConnector({ provider = null, model = null } = {}) {
     case "generic-openai":
       const { GenericOpenAiLLM } = require("../AiProviders/genericOpenAi");
       return new GenericOpenAiLLM(embedder, model);
+    // RagmyAI: "bedrock" = legacy IAM/Converse provider (Llama 4 Scout),
+    // "bedrock_mantle" = upstream API-key/Mantle provider (Gemma 4).
     case "bedrock":
+      const { AWSBedrockLegacyLLM } = require("../AiProviders/bedrockLegacy");
+      return new AWSBedrockLegacyLLM(embedder, model);
+    case "bedrock_mantle":
       const { AWSBedrockLLM } = require("../AiProviders/bedrock");
       return new AWSBedrockLLM(embedder, model);
     case "deepseek":
@@ -466,7 +471,11 @@ function getLLMProviderClass({ provider = null } = {}) {
     case "generic-openai":
       const { GenericOpenAiLLM } = require("../AiProviders/genericOpenAi");
       return GenericOpenAiLLM;
+    // RagmyAI: see getLLMProvider for the bedrock / bedrock_mantle split.
     case "bedrock":
+      const { AWSBedrockLegacyLLM } = require("../AiProviders/bedrockLegacy");
+      return AWSBedrockLegacyLLM;
+    case "bedrock_mantle":
       const { AWSBedrockLLM } = require("../AiProviders/bedrock");
       return AWSBedrockLLM;
     case "deepseek":
@@ -583,6 +592,8 @@ function getBaseLLMProviderModel({ provider = null } = {}) {
     case "generic-openai":
       return process.env.GENERIC_OPEN_AI_MODEL_PREF;
     case "bedrock":
+      return process.env.AWS_BEDROCK_LEGACY_LLM_MODEL_PREFERENCE;
+    case "bedrock_mantle":
       return process.env.AWS_BEDROCK_LLM_MODEL_PREFERENCE;
     case "deepseek":
       return process.env.DEEPSEEK_MODEL_PREF;

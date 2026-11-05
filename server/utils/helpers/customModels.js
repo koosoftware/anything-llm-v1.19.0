@@ -52,6 +52,7 @@ const SUPPORT_CUSTOM_MODELS = [
   "cerebras",
   "omlx",
   "bedrock",
+  "bedrock_mantle",
   "generic-openai",
   "vertex",
   // Image Generation Engines
@@ -193,6 +194,7 @@ async function getCustomModels(
     case "cerebras":
       return await getCerebrasModels();
     case "bedrock":
+    case "bedrock_mantle": // RagmyAI: lists the Mantle catalog (upstream provider)
       return await getBedrockModels(apiKey, options);
     case "vertex":
       return await getVertexModels();

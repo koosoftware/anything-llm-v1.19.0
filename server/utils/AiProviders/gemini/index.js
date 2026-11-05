@@ -400,6 +400,17 @@ class GeminiLLM {
     return modelsDevReasoningCapabilities("gemini", this.model);
   }
 
+  /**
+   * RagmyAI: optional max output tokens per response, from GEMINI_LLM_MAX_TOKENS.
+   * Returns {} when unset/invalid so no limit is sent (model default applies).
+   */
+  #maxTokensParam() {
+    const value = Number(process.env.GEMINI_LLM_MAX_TOKENS);
+    return Number.isFinite(value) && value > 0
+      ? { max_tokens: Math.floor(value) }
+      : {};
+  }
+
   async getChatCompletion(
     messages = null,
     { temperature = this.temperature, reasoningEffort = null } = {}
@@ -411,6 +422,7 @@ class GeminiLLM {
           messages,
           ...temperatureParam(temperature),
           ...reasoningParams("gemini", reasoningEffort, this.model),
+          ...this.#maxTokensParam(), // RagmyAI
         })
         .catch((e) => {
           console.error(e);
@@ -450,6 +462,7 @@ class GeminiLLM {
         messages,
         ...temperatureParam(temperature),
         ...reasoningParams("gemini", reasoningEffort, this.model),
+        ...this.#maxTokensParam(), // RagmyAI
         stream_options: {
           include_usage: true,
         },

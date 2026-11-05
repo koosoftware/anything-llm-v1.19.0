@@ -13,6 +13,8 @@ const GenericOpenAiProvider = require("./genericOpenAi.js");
 const PerplexityProvider = require("./perplexity.js");
 const TextWebGenUiProvider = require("./textgenwebui.js");
 const AWSBedrockProvider = require("./bedrock.js");
+// RagmyAI: legacy IAM/Converse Bedrock agent provider, used for the "bedrock" key
+const AWSBedrockLegacyProvider = require("./bedrockLegacy.js");
 const FireworksAIProvider = require("./fireworksai.js");
 const DeepSeekProvider = require("./deepseek.js");
 const LiteLLMProvider = require("./litellm.js");
@@ -54,6 +56,7 @@ module.exports = {
   PerplexityProvider,
   TextWebGenUiProvider,
   AWSBedrockProvider,
+  AWSBedrockLegacyProvider,
   FireworksAIProvider,
   LiteLLMProvider,
   ApiPieProvider,

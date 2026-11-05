@@ -14,6 +14,7 @@ const WorkspaceParsedFiles = {
     threadId = null,
     metadata = null,
     tokenCountEstimate = 0,
+    sessionId = null, // RagmyAI: API chat session the file belongs to
   }) {
     try {
       const file = await prisma.workspace_parsed_files.create({
@@ -24,6 +25,7 @@ const WorkspaceParsedFiles = {
           threadId: threadId ? parseInt(threadId) : null,
           metadata,
           tokenCountEstimate,
+          sessionId, // RagmyAI
         },
       });
 
@@ -229,12 +231,21 @@ const WorkspaceParsedFiles = {
     }
   },
 
-  getContextFiles: async function (workspace, thread = null, user = null) {
+  // RagmyAI: optional sessionId. Files parsed for an API chat session are only
+  // returned for that session; callers without a sessionId only get files with
+  // no session, so session files never leak into other chats.
+  getContextFiles: async function (
+    workspace,
+    thread = null,
+    user = null,
+    sessionId = null
+  ) {
     try {
       const files = await this.where({
         workspaceId: workspace.id,
         threadId: thread?.id || null,
         ...(user ? { userId: user.id } : {}),
+        sessionId: sessionId || null,
       });
 
       const results = [];

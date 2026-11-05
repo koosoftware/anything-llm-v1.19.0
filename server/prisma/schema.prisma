@@ -378,6 +378,7 @@ model workspace_parsed_files {
   threadId           Int?
   metadata           String?
   tokenCountEstimate Int?               @default(0)
+  sessionId          String? // RagmyAI: parsed files attached to an API chat session ("Ask doc")
   createdAt          DateTime           @default(now())
   workspace          workspaces         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user               users?             @relation(fields: [userId], references: [id], onDelete: Cascade)

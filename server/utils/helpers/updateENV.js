@@ -41,6 +41,11 @@ const KEY_MAPPING = {
     envKey: "AZURE_OPENAI_MODEL_PREF",
     checks: [isNotEmpty],
   },
+  // RagmyAI: optional max output tokens for Azure OpenAI (empty = no limit)
+  AzureOpenAiMaxTokens: {
+    envKey: "AZURE_OPENAI_MAX_TOKENS",
+    checks: [optional(nonZero)],
+  },
   AzureOpenAiEmbeddingModelPref: {
     envKey: "EMBEDDING_MODEL_PREF",
     checks: [isNotEmpty],
@@ -82,6 +87,11 @@ const KEY_MAPPING = {
   GeminiLLMModelPref: {
     envKey: "GEMINI_LLM_MODEL_PREF",
     checks: [isNotEmpty],
+  },
+  // RagmyAI: optional max output tokens for Gemini (empty = no limit)
+  GeminiLLMMaxTokens: {
+    envKey: "GEMINI_LLM_MAX_TOKENS",
+    checks: [optional(nonZero)],
   },
   GeminiSafetySetting: {
     envKey: "GEMINI_SAFETY_SETTING",
@@ -247,6 +257,50 @@ const KEY_MAPPING = {
   AwsBedrockLLMMaxTokens: {
     envKey: "AWS_BEDROCK_LLM_MAX_TOKENS",
     checks: [],
+  },
+
+  // RagmyAI: legacy AWS Bedrock (IAM/Converse) settings, used by the "bedrock"
+  // provider key. Upstream's AWS_BEDROCK_LLM_* settings above are used by "bedrock_mantle".
+  AwsBedrockLegacyLLMConnectionMethod: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_CONNECTION_METHOD",
+    checks: [
+      (input) => {
+        const {
+          SUPPORTED_CONNECTION_METHODS,
+        } = require("../AiProviders/bedrockLegacy/utils");
+        return SUPPORTED_CONNECTION_METHODS.includes(input)
+          ? null
+          : "invalid Value";
+      },
+    ],
+  },
+  AwsBedrockLegacyLLMAccessKeyId: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_ACCESS_KEY_ID",
+    checks: [isNotEmpty],
+  },
+  AwsBedrockLegacyLLMAccessKey: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_ACCESS_KEY",
+    checks: [isNotEmpty],
+  },
+  AwsBedrockLegacyLLMSessionToken: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_SESSION_TOKEN",
+    checks: [],
+  },
+  AwsBedrockLegacyLLMRegion: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_REGION",
+    checks: [isNotEmpty],
+  },
+  AwsBedrockLegacyLLMModel: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_MODEL_PREFERENCE",
+    checks: [isNotEmpty],
+  },
+  AwsBedrockLegacyLLMTokenLimit: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_MODEL_TOKEN_LIMIT",
+    checks: [nonZero],
+  },
+  AwsBedrockLegacyLLMMaxOutputTokens: {
+    envKey: "AWS_BEDROCK_LEGACY_LLM_MAX_OUTPUT_TOKENS",
+    checks: [nonZero],
   },
 
   EmbeddingEngine: {
@@ -1242,6 +1296,7 @@ function supportedLLM(input = "") {
     "litellm",
     "generic-openai",
     "bedrock",
+    "bedrock_mantle", // RagmyAI: upstream Mantle provider under its own key
     "deepseek",
     "apipie",
     "xai",

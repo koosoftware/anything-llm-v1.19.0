@@ -185,7 +185,11 @@ function getModelTag() {
     case "textgenwebui":
       model = "textgenwebui-default";
       break;
+    // RagmyAI: "bedrock" = legacy provider, "bedrock_mantle" = upstream Mantle provider
     case "bedrock":
+      model = process.env.AWS_BEDROCK_LEGACY_LLM_MODEL_PREFERENCE;
+      break;
+    case "bedrock_mantle":
       model = process.env.AWS_BEDROCK_LLM_MODEL_PREFERENCE;
       break;
     case "fireworksai":
