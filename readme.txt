@@ -1,5 +1,9 @@
-sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.2 -f ./docker/Dockerfile .
-sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.2
+sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.3 -f ./docker/Dockerfile .
+sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.3
+
+v1.19.0.3 (not released yet)
+------------------------
+- Agent API stream: when a streaming agent provider (Gemma 4) sends textResponseChunk events and then the full answer again, forward only the unsent part, so the RagmyAI server no longer shows a duplicated @agent reply
 
 v1.19.0.2 (06-Nov-2026)
 ------------------------

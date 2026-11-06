@@ -748,6 +748,40 @@ class EphemeralEventListener extends EventEmitter {
    * @returns {Promise<{thoughts: string[], textResponse: string}>}
    */
   async streamAgentEvents(response, uuid) {
+    // RagmyAI: streaming agent providers (eg: Gemma 4 on bedrock_mantle) send
+    // the answer as textResponseChunk events and then the whole answer again
+    // (fullTextResponse, or a final message). The RagmyAI server appends every
+    // textResponseChunk/textResponse, as it did with the old fork, which never
+    // sent both. So once chunks were sent, only forward the part of a full-text
+    // event that the client has not received yet.
+    let sentText = "";
+    const writeFullText = (content) => {
+      if (typeof content === "string" && sentText && content.startsWith(sentText)) {
+        const rest = content.slice(sentText.length);
+        if (!rest) return;
+        sentText += rest;
+        return writeResponseChunk(response, {
+          id: uuid,
+          type: "textResponseChunk",
+          textResponse: rest,
+          sources: [],
+          close: false,
+          error: null,
+        });
+      }
+      if (typeof content === "string") sentText = content;
+      return writeResponseChunk(response, {
+        id: uuid,
+        type: "textResponse",
+        textResponse: content,
+        sources: [],
+        attachments: [],
+        close: true,
+        error: null,
+        animate: false,
+      });
+    };
+
     const onChunkHandler = (data) => {
       if (data.type === "statusResponse") {
         return writeResponseChunk(response, {
@@ -782,6 +816,7 @@ class EphemeralEventListener extends EventEmitter {
         if (!inner?.type) return;
 
         if (inner.type === "textResponseChunk") {
+          if (typeof inner.content === "string") sentText += inner.content;
           return writeResponseChunk(response, {
             id: uuid,
             type: "textResponseChunk",
@@ -793,16 +828,7 @@ class EphemeralEventListener extends EventEmitter {
         }
 
         if (inner.type === "fullTextResponse") {
-          return writeResponseChunk(response, {
-            id: uuid,
-            type: "textResponse",
-            textResponse: inner.content,
-            sources: [],
-            attachments: [],
-            close: true,
-            error: null,
-            animate: false,
-          });
+          return writeFullText(inner.content);
         }
 
         if (inner.type === "usageMetrics" && inner.metrics) {
@@ -818,16 +844,7 @@ class EphemeralEventListener extends EventEmitter {
         return;
       }
 
-      return writeResponseChunk(response, {
-        id: uuid,
-        type: "textResponse",
-        textResponse: data.content,
-        sources: [],
-        attachments: [],
-        close: true,
-        error: null,
-        animate: false,
-      });
+      return writeFullText(data.content);
     };
     this.on("chunk", onChunkHandler);
 
