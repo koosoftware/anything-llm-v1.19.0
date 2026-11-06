@@ -44,6 +44,19 @@ class GroqLLM {
     );
   }
 
+  /**
+   * RagmyAI: gpt-oss models return reasoning in a separate field, which v1.19's
+   * stream handler wraps in <think>. The old fork dropped it, so keep that
+   * behaviour (voice chat must not show or speak the reasoning). Scoped to
+   * gpt-oss because other Groq models may reject the parameter.
+   * @returns {object}
+   */
+  #reasoningParams() {
+    return this.model?.startsWith("openai/gpt-oss")
+      ? { include_reasoning: false }
+      : {};
+  }
+
   #log(text, ...args) {
     console.log(`\x1b[32m[GroqAi]\x1b[0m ${text}`, ...args);
   }
@@ -184,6 +197,7 @@ class GroqLLM {
           model: this.model,
           messages,
           ...temperatureParam(temperature),
+          ...this.#reasoningParams(),
         })
         .catch((e) => {
           throw new Error(e.message);
@@ -228,6 +242,7 @@ class GroqLLM {
         stream: true,
         messages,
         ...temperatureParam(temperature),
+        ...this.#reasoningParams(),
       }),
       messages,
       runPromptTokenCalculation: false,

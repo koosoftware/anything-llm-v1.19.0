@@ -110,7 +110,22 @@ function controlPlaneHost(region) {
  * @param {string|null} modelId
  * @returns {string}
  */
+/**
+ * RagmyAI: Google catalog models (eg: `google.gemma-4-31b`) are served on the
+ * Mantle `/openai/v1` route; Mantle `/v1` rejects them with
+ * "isn't supported on this route (10008)". Matches the old fork's default path.
+ * @param {string|null} modelId
+ * @returns {boolean}
+ */
+function isGoogleModelId(modelId = "") {
+  if (!modelId) return false;
+  const prefix = INFERENCE_PROFILE_PREFIXES.find((p) => modelId.startsWith(p));
+  const baseId = prefix ? modelId.slice(prefix.length) : modelId;
+  return baseId.startsWith("google.");
+}
+
 function openaiBaseURL(region, modelId = "") {
+  if (isGoogleModelId(modelId)) return `${mantleHost(region)}/openai/v1`;
   if (!isOpenAIModelId(modelId)) return `${mantleHost(region)}/v1`;
   return isInferenceProfileId(modelId)
     ? `${runtimeHost(region)}/openai/v1`

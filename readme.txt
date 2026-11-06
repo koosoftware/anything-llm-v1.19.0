@@ -1,7 +1,12 @@
-sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.1 -f ./docker/Dockerfile .
-sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.1
+sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.2 -f ./docker/Dockerfile .
+sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.2
 
-v1.19.0.1 (not released yet)
+v1.19.0.2 (06-Nov-2026)
+------------------------
+- Route Google models (Gemma 4) on bedrock_mantle to Mantle /openai/v1 (Mantle /v1 returned "isn't supported on this route (10008)"); chat and agent providers
+- Groq gpt-oss models: send include_reasoning=false so v1.19's stream handler does not add <think> reasoning to replies (voice chat); old fork dropped reasoning
+
+v1.19.0.1 (03-Nov-2026)
 ------------------------
 Based on upstream AnythingLLM v1.19.0 (pg branch). RagmyAI customizations re-applied from v1.8.5.10:
 - AWS Bedrock split for backward compatibility with the RagmyAI server:
