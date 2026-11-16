@@ -1,7 +1,11 @@
-sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.3 -f ./docker/Dockerfile .
-sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.3
+sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.4 -f ./docker/Dockerfile .
+sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.4
 
-v1.19.0.3 (not released yet)
+v1.19.0.4 (16-Nov-2026)
+------------------------
+- Let AI knows the filename when ask doc
+
+v1.19.0.3 (9-Nov-2026)
 ------------------------
 - Agent API stream: when a streaming agent provider (Gemma 4) sends textResponseChunk events and then the full answer again, forward only the unsent part, so the RagmyAI server no longer shows a duplicated @agent reply
 

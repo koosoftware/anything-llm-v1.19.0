@@ -741,7 +741,12 @@ async function streamChat({
     );
     parsedFiles.forEach((doc) => {
       const { pageContent, ...metadata } = doc;
-      contextTexts.push(doc.pageContent);
+      // RagmyAI: label the file so the model links "this PDF" to it, in any
+      // language. The label goes to the model only; sources keep the raw text.
+      const docName = metadata.title || "Uploaded document";
+      contextTexts.push(
+        `The user uploaded this document: "${docName}". When the user refers to this PDF, this file or the document, in any language, they mean this. Full text:\n\n${pageContent}`
+      );
       sources.push({
         text:
           pageContent.slice(0, 1_000) + "...continued on in source document...",
