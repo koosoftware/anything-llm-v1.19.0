@@ -1,5 +1,10 @@
-sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.4 -f ./docker/Dockerfile .
-sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.4
+sudo docker buildx build --platform linux/amd64 -t koosoftware/anything-llm:ragmyai-v1.19.0.5 -f ./docker/Dockerfile .
+sudo docker push koosoftware/anything-llm:ragmyai-v1.19.0.5
+
+
+v1.19.0.5 (20-Nov-2026)
+------------------------
+- Make delete-parsed-files succeed when nothing matched.
 
 v1.19.0.4 (16-Nov-2026)
 ------------------------

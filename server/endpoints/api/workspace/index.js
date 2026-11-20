@@ -1177,21 +1177,23 @@ function apiWorkspaceEndpoints(app) {
         // This works for both workspace and threads.
         // we simplify this by just looking at workspace<>user overlap
         // since they are all on the same table.
-        const success = await WorkspaceParsedFiles.delete({
-          id: { in: fileIds.map((id) => parseInt(id)) },
-          //user_id: user?.id ?? null,
-          workspaceId: workspace.id,
+        // RagmyAI: the server resends ids of files it already deleted (and old-instance
+        // ids after migration). Upstream WorkspaceParsedFiles.delete() now returns false
+        // when nothing matched, which made this endpoint 500 and broke "Ask doc".
+        // Deleting nothing is not an error here, as on the old fork; only a DB error is.
+        const prisma = require("../../../utils/prisma");
+        await prisma.workspace_parsed_files.deleteMany({
+          where: {
+            id: { in: fileIds.map((id) => parseInt(id)) },
+            workspaceId: workspace.id,
+          },
         });
 
-        if (success) {
-          await EventLogs.logEvent("api_workspace_parsed_files_deleted", {
-            workspaceName: workspace?.name || "Unknown Workspace",
-          });
+        await EventLogs.logEvent("api_workspace_parsed_files_deleted", {
+          workspaceName: workspace?.name || "Unknown Workspace",
+        });
 
-          response.sendStatus(200).end();
-        } else {
-          response.sendStatus(500).end();
-        }
+        response.sendStatus(200).end();
       } catch (e) {
         console.error(e.message, e);
         response.sendStatus(500).end();
